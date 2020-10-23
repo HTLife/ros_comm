@@ -498,85 +498,90 @@ bool Recorder::checkDuration(const ros::Time& t)
 
 //! Thread that actually does writing to file.
 void Recorder::doRecord() {
-    // Open bag file for writing
-    startWriting();
-
-    // Schedule the disk space check
-    warn_next_ = ros::WallTime();
-
-    try
+    while (nh.ok())
     {
-        checkDisk();
-    }
-    catch (const rosbag::BagException& ex)
-    {
-        ROS_ERROR_STREAM(ex.what());
-        exit_code_ = 1;
-        stopWriting();
-        return;
-    }
+        // TODO: Block the execution here with atomic variable############################################
 
-    check_disk_next_ = ros::WallTime::now() + ros::WallDuration().fromSec(20.0);
+        // Open bag file for writing
+        startWriting();
 
-    // Technically the queue_mutex_ should be locked while checking empty.
-    // Except it should only get checked if the node is not ok, and thus
-    // it shouldn't be in contention.
-    ros::NodeHandle nh;
-    while (nh.ok() || !queue_->empty()) {
-        boost::unique_lock<boost::mutex> lock(queue_mutex_);
-
-        bool finished = false;
-        while (queue_->empty()) {
-            if (!nh.ok()) {
-                lock.release()->unlock();
-                finished = true;
-                break;
-            }
-            boost::xtime xt;
-            boost::xtime_get(&xt, boost::TIME_UTC_);
-            xt.nsec += 250000000;
-            queue_condition_.timed_wait(lock, xt);
-            if (checkDuration(ros::Time::now()))
-            {
-                finished = true;
-                break;
-            }
-        }
-        if (finished)
-            break;
-
-        OutgoingMessage out = queue_->front();
-        queue_->pop();
-        queue_size_ -= out.msg->size();
-        
-        lock.release()->unlock();
-        
-        if (checkSize())
-            break;
-
-        if (checkDuration(out.time))
-            break;
+        // Schedule the disk space check
+        warn_next_ = ros::WallTime();
 
         try
         {
-            if (scheduledCheckDisk() && checkLogging())
-                bag_.write(out.topic, out.time, *out.msg, out.connection_header);
+            checkDisk();
         }
         catch (const rosbag::BagException& ex)
         {
             ROS_ERROR_STREAM(ex.what());
             exit_code_ = 1;
-            break;
+            stopWriting();
+            return;
         }
-    }
 
-    stopWriting();
+        check_disk_next_ = ros::WallTime::now() + ros::WallDuration().fromSec(20.0);
+
+        // Technically the queue_mutex_ should be locked while checking empty.
+        // Except it should only get checked if the node is not ok, and thus
+        // it shouldn't be in contention.
+        ros::NodeHandle nh;
+        while (nh.ok() || !queue_->empty()) {//TODO: change nh.ok() to atomic variable ###################################
+            boost::unique_lock<boost::mutex> lock(queue_mutex_);
+
+            bool finished = false;
+            while (queue_->empty()) {
+                if (!nh.ok()) {
+                    lock.release()->unlock();
+                    finished = true;
+                    break;
+                }
+                boost::xtime xt;
+                boost::xtime_get(&xt, boost::TIME_UTC_);
+                xt.nsec += 250000000;
+                queue_condition_.timed_wait(lock, xt);
+                if (checkDuration(ros::Time::now()))
+                {
+                    finished = true;
+                    break;
+                }
+            }
+            if (finished)
+                break;
+
+            OutgoingMessage out = queue_->front();
+            queue_->pop();
+            queue_size_ -= out.msg->size();
+            
+            lock.release()->unlock();
+            
+            if (checkSize())
+                break;
+
+            if (checkDuration(out.time))
+                break;
+
+            try
+            {
+                if (scheduledCheckDisk() && checkLogging())
+                    bag_.write(out.topic, out.time, *out.msg, out.connection_header);
+            }
+            catch (const rosbag::BagException& ex)
+            {
+                ROS_ERROR_STREAM(ex.what());
+                exit_code_ = 1;
+                break;
+            }
+        }
+
+        stopWriting();
+    }
 }
 
 void Recorder::doRecordSnapshotter() {
     ros::NodeHandle nh;
   
-    while (nh.ok() || !queue_queue_.empty()) {
+    while (nh.ok() || !queue_queue_.empty()) {//TODO: change nh.ok() to atomic variable ###################################
         boost::unique_lock<boost::mutex> lock(queue_mutex_);
         while (queue_queue_.empty()) {
             if (!nh.ok())

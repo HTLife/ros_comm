@@ -130,6 +130,7 @@ public:
     boost::shared_ptr<ros::Subscriber> subscribe(std::string const& topic);
 
     int run();
+    int run2();
 
 private:
     void printUsage();
@@ -146,6 +147,7 @@ private:
     //    void doQueue(topic_tools::ShapeShifter::ConstPtr msg, std::string const& topic, boost::shared_ptr<ros::Subscriber> subscriber, boost::shared_ptr<int> count);
     void doQueue(const ros::MessageEvent<topic_tools::ShapeShifter const>& msg_event, std::string const& topic, boost::shared_ptr<ros::Subscriber> subscriber, boost::shared_ptr<int> count);
     void doRecord();
+    void doRecord2();
     void checkNumSplits();
     bool checkSize();
     bool checkDuration(const ros::Time&);
