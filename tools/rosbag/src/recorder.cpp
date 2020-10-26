@@ -498,6 +498,7 @@ bool Recorder::checkDuration(const ros::Time& t)
 
 //! Thread that actually does writing to file.
 void Recorder::doRecord() {
+    ros::NodeHandle nh;
     while (nh.ok())
     {
         // TODO: Block the execution here with atomic variable############################################
@@ -525,7 +526,6 @@ void Recorder::doRecord() {
         // Technically the queue_mutex_ should be locked while checking empty.
         // Except it should only get checked if the node is not ok, and thus
         // it shouldn't be in contention.
-        ros::NodeHandle nh;
         while (nh.ok() || !queue_->empty()) {//TODO: change nh.ok() to atomic variable ###################################
             boost::unique_lock<boost::mutex> lock(queue_mutex_);
 
